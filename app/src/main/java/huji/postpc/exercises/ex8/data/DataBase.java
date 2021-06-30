@@ -17,7 +17,8 @@ public class DataBase {
     private static DataBase singleton;
     private FirebaseFirestore fireStore;
     private final Map<String, Calculation> calculations = new HashMap<>();
-    private final MutableLiveData<List<Calculation>> mutableLiveData = new MutableLiveData<>();
+    public Boolean isTestMode = false;
+    //    private final MutableLiveData<List<Calculation>> mutableLiveData = new MutableLiveData<>();
     private final Map<String, MutableLiveData<Integer>> calculationIdToProgress = new HashMap<>();
 
     public static DataBase getInstance() {
@@ -28,7 +29,7 @@ public class DataBase {
     }
 
     private DataBase() {
-        mutableLiveData.setValue(new ArrayList<>());
+//        mutableLiveData.setValue(new ArrayList<>());
 //        fireStore = FirebaseFirestore.getInstance();
         // Add listener!
 //        fireStore.collection("orders").addSnapshotListener((value, err) -> {
@@ -46,17 +47,22 @@ public class DataBase {
 //        });
     }
 
-    public LiveData<List<Calculation>> getLiveDataCalculations() {
-        return mutableLiveData;
-    }
+//    public LiveData<List<Calculation>> getLiveDataCalculations() {
+//        return mutableLiveData;
+//    }
 
     public void deleteCalculation(String calculationID) {
         if (!calculations.containsKey(calculationID)) {
-            Log.d(DataBase.class.toString(), String.format("Order: %s is not exist", calculationID));
+            if (!isTestMode) {
+                Log.d(DataBase.class.toString(), String.format("Order: %s is not exist", calculationID));
+            }
+            return;
         }
         Calculation deleted = calculations.remove(calculationID);
-        calculationIdToProgress.remove(calculationID);
-        Log.d("Database", String.format("Calculation id %s (number : %d) was deleted from db", deleted.getId(), deleted.getNumber()));
+        if (!isTestMode) {
+            calculationIdToProgress.remove(calculationID);
+            Log.d("Database", String.format("Calculation id %s (number : %d) was deleted from db", deleted.getId(), deleted.getNumber()));
+        }
 //        fireStore.collection("orders").document(calculationID).delete();
     }
 
@@ -65,19 +71,26 @@ public class DataBase {
             Log.d(DataBase.class.toString(), "Can't add null order");
         }
         calculations.put(calculation.getId(), calculation);
-        calculationIdToProgress.put(calculation.getId(), new MutableLiveData<>(0));
-        Log.d(DataBase.class.toString(), String.format("Calculation (id:%s,number:%d) was added successfully", calculation.getId(), calculation.getNumber()));
+        if (!isTestMode) {
+            calculationIdToProgress.put(calculation.getId(), new MutableLiveData<>(0));
+            Log.d(DataBase.class.toString(), String.format("Calculation (id:%s,number:%d) was added successfully", calculation.getId(), calculation.getNumber()));
+        }
     }
 
     public Calculation getCalculationPr(String calulationId) {
         if (!calculations.containsKey(calulationId)) {
-            Log.d(DataBase.class.toString(), "Can't add null order");
+            if (!isTestMode) {
+                Log.d(DataBase.class.toString(), "Can't add null order");
+            }
             return null;
         }
         return calculations.get(calulationId);
     }
 
     public LiveData<Integer> getLiveDataOfSomeProgress(String calculcationId) {
+        if (isTestMode) {
+            return null;
+        }
         if (!calculationIdToProgress.containsKey(calculcationId)) {
             Log.e(DataBase.class.toString(), "Can't get livedata of order that is not exist");
             return null;
@@ -86,6 +99,9 @@ public class DataBase {
     }
 
     public void editProgressStatus(String calculationID, long progress) {
+        if (isTestMode) {
+            return;
+        }
         if (!calculationIdToProgress.containsKey(calculationID)) {
             Log.e(DataBase.class.toString(), "Edited calculation is null?!");
             return;
